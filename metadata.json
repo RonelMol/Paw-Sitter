@@ -1,0 +1,6 @@
+{
+  "name": "PawShield",
+  "description": "Two-sided pet sitting marketplace with multi-agent AI orchestration, Google AdSense compliance research, automated QA testing, and strategic roadmap planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
