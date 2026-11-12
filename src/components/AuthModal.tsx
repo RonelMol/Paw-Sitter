@@ -47,6 +47,13 @@ export function AuthModal({
       onSuccess?.();
       onClose();
     } catch (err: any) {
+      if (
+        err?.code === "auth/popup-closed-by-user" ||
+        err?.code === "auth/cancelled-popup-request" ||
+        err?.message?.includes("popup-closed-by-user")
+      ) {
+        return;
+      }
       console.error("Google sign in error:", err);
       setError(err.message || "Failed to sign in with Google.");
     } finally {

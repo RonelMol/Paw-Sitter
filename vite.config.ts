@@ -10,6 +10,9 @@ export default defineConfig(() => {
       'process.env': {},
       'process.platform': JSON.stringify('browser'),
       'process.version': JSON.stringify(''),
+      'process.pid': 1,
+      'process.arch': JSON.stringify('x64'),
+      'process': 'globalThis.process',
     },
     resolve: {
       alias: {

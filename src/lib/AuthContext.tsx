@@ -142,8 +142,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithGoogle = async (role = "PET_OWNER") => {
-    const result = await signInWithPopup(auth, googleAuthProvider);
-    await syncBackend(result.user, role);
+    try {
+      const result = await signInWithPopup(auth, googleAuthProvider);
+      await syncBackend(result.user, role);
+    } catch (err: any) {
+      if (
+        err?.code === "auth/popup-closed-by-user" ||
+        err?.code === "auth/cancelled-popup-request" ||
+        err?.message?.includes("popup-closed-by-user")
+      ) {
+        // User closed the popup before completing sign-in
+        return;
+      }
+      throw err;
+    }
   };
 
   const loginWithEmail = async (email: string, pass: string) => {

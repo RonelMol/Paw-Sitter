@@ -12,6 +12,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@google/genai": "^2.4.0",
     "@stripe/react-stripe-js": "^6.10.0",
     "@stripe/stripe-js": "^9.16.0",

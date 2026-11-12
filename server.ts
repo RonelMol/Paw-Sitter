@@ -641,39 +641,54 @@ async function initDbTables() {
   } catch (e) {}
 
   try {
-    // Purge any existing records for deleted account sitter2@yahoo.com
-    const deletedSitterCheck = await pool.query("SELECT id FROM users WHERE LOWER(email) = 'sitter2@yahoo.com'");
-    if (deletedSitterCheck.rows.length > 0) {
-      for (const row of deletedSitterCheck.rows) {
-        const delId = row.id;
-        await pool.query("DELETE FROM booking_financial_snapshots WHERE booking_id IN (SELECT id FROM bookings WHERE sitter_id = $1 OR owner_id = $1)", [delId]);
-        await pool.query("DELETE FROM payments WHERE booking_id IN (SELECT id FROM bookings WHERE sitter_id = $1 OR owner_id = $1)", [delId]);
-        await pool.query("DELETE FROM sitter_payout_disbursements WHERE sitter_id = $1", [delId]);
-        await pool.query("DELETE FROM bookings WHERE sitter_id = $1 OR owner_id = $1", [delId]);
-        await pool.query("DELETE FROM sitter_verifications WHERE user_id = $1", [delId]);
-        await pool.query("DELETE FROM sitter_profiles WHERE user_id = $1", [delId]);
-        await pool.query("DELETE FROM users WHERE id = $1", [delId]);
-      }
-    }
-
-    // Only seed initial admin if the database has ZERO users
-    const usersCountRes = await pool.query("SELECT COUNT(*) FROM users");
-    const totalUsers = parseInt(usersCountRes.rows[0].count, 10);
-
-    if (totalUsers === 0) {
-      // Seed default initial master admin for platform access
-      await pool.query(
-        "INSERT INTO users (uid, email, name, role, password_hash, is_verified) VALUES ($1, $2, $3, $4, $5, TRUE) ON CONFLICT DO NOTHING",
-        ["seed_rolan_admin_uid", "rolanmolano77@gmail.com", "Rolan Molano (Admin)", "ADMIN", "123"]
-      );
+    // Ensure default initial master admin for platform access
+    const adminCheck = await pool.query("SELECT id FROM users WHERE LOWER(email) = 'admin@pawshield.com'");
+    if (adminCheck.rows.length === 0) {
       await pool.query(
         "INSERT INTO users (uid, email, name, role, password_hash, is_verified) VALUES ($1, $2, $3, $4, $5, TRUE) ON CONFLICT DO NOTHING",
         ["seed_admin_uid", "admin@pawshield.com", "PawShield Administrator", "ADMIN", "123"]
       );
     }
 
-    // Clean up any remaining records referencing sitter2@yahoo.com
-    await pool.query("DELETE FROM sitter_verifications WHERE LOWER(email) = 'sitter2@yahoo.com'");
+    const rolanCheck = await pool.query("SELECT id FROM users WHERE LOWER(email) = 'rolanmolano77@gmail.com'");
+    if (rolanCheck.rows.length === 0) {
+      await pool.query(
+        "INSERT INTO users (uid, email, name, role, password_hash, is_verified) VALUES ($1, $2, $3, $4, $5, TRUE) ON CONFLICT DO NOTHING",
+        ["seed_rolan_uid", "rolanmolano77@gmail.com", "Rolan Molano (Admin)", "ADMIN", "123"]
+      );
+    }
+
+    // Ensure default test sitter for platform access
+    const sitterCheck = await pool.query("SELECT id FROM users WHERE LOWER(email) = 'sitter@pawshield.com'");
+    if (sitterCheck.rows.length === 0) {
+      const sitterRes = await pool.query(
+        "INSERT INTO users (uid, email, name, role, password_hash, is_verified, phone) VALUES ($1, $2, $3, $4, $5, TRUE, $6) RETURNING id",
+        ["seed_sitter_pawshield_uid", "sitter@pawshield.com", "Sarah Jenkins (Certified Sitter)", "PET_SITTER", "123", "+639171234567"]
+      );
+      if (sitterRes.rows.length > 0) {
+        const newSitterId = sitterRes.rows[0].id;
+        await pool.query(
+          "INSERT INTO sitter_profiles (user_id, bio, experience_years, address, city, hourly_rate, is_active) VALUES ($1, $2, $3, $4, $5, $6, TRUE) ON CONFLICT DO NOTHING",
+          [newSitterId, "Certified, loving pet sitter with 6+ years experience in cat and dog boarding and sitting.", 6, "Legaspi Village, Makati City", "Makati City", 350]
+        );
+      }
+    }
+
+    // Ensure Sitter 2 account exists for QA testing and quick login
+    const sitter2Check = await pool.query("SELECT id FROM users WHERE LOWER(email) = 'sitter2@yahoo.com'");
+    if (sitter2Check.rows.length === 0) {
+      const sitter2Res = await pool.query(
+        "INSERT INTO users (uid, email, name, role, password_hash, is_verified, phone) VALUES ($1, $2, $3, $4, $5, TRUE, $6) RETURNING id",
+        ["seed_sitter2_uid", "sitter2@yahoo.com", "Maria Santos (Pet Sitter 2)", "PET_SITTER", "123", "+639171234568"]
+      );
+      if (sitter2Res.rows.length > 0) {
+        const s2Id = sitter2Res.rows[0].id;
+        await pool.query(
+          "INSERT INTO sitter_profiles (user_id, bio, experience_years, address, city, hourly_rate, is_active) VALUES ($1, $2, $3, $4, $5, $6, TRUE) ON CONFLICT DO NOTHING",
+          [s2Id, "Experienced dog walker and pet sitter with specialized senior pet care certification.", 4, "Salcedo Village, Makati City", "Makati City", 300]
+        );
+      }
+    }
 
     // Seed disbursement submissions trail if empty
     const disbTrailCount = await pool.query("SELECT COUNT(*) FROM disbursement_submissions_trail");

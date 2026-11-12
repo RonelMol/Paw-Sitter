@@ -667,7 +667,7 @@ export function AdminSystemMetricsPage() {
           </div>
           <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
             <span className="text-[10px] text-slate-400 font-bold uppercase block">Process PID</span>
-            <span className="font-mono font-bold text-slate-800">PID #{snapshot?.process.pid || process.pid}</span>
+            <span className="font-mono font-bold text-slate-800">PID #{snapshot?.process.pid || 1}</span>
           </div>
           <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
             <span className="text-[10px] text-slate-400 font-bold uppercase block">Event Loop Latency</span>
@@ -1114,7 +1114,7 @@ export function AdminSystemMetricsPage() {
                 </tr>
               ) : (
                 filteredProcesses.map((proc, idx) => {
-                  const isNodeMaster = proc.pid === process.pid || proc.name.includes("node");
+                  const isNodeMaster = proc.pid === (snapshot?.process.pid || 1) || proc.name.includes("node");
                   const isHighCpu = proc.cpuPercent >= 20;
 
                   return (

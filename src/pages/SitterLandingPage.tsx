@@ -29,7 +29,10 @@ import {
   MessageSquare,
   Camera,
   Wallet,
-  Tag
+  Tag,
+  TrendingUp,
+  Award,
+  Star
 } from "lucide-react";
 import { SitterProfileEditor } from "../components/SitterProfileEditor";
 import { SitterInboxView } from "../components/SitterInboxView";
@@ -38,6 +41,7 @@ import { SitterMonthlyPayoutsView } from "../components/SitterMonthlyPayoutsView
 import { SitterAppKycModule } from "../components/SitterAppKycModule";
 import { SitterRatesPage } from "./SitterRatesPage";
 import { SitterBookingReviewModal } from "../components/SitterBookingReviewModal";
+import { SitterPerformanceOverview } from "../components/SitterPerformanceOverview";
 
 const PHILIPPINE_BANKS = [
   "BDO Unibank",
@@ -63,7 +67,7 @@ const PHILIPPINE_IDS = [
   "PRC Professional License",
 ];
 
-export type SitterTabType = "PAYOUTS" | "BOOKINGS" | "RATES" | "INBOX" | "PROFILE" | "DISBURSEMENT" | "KYC" | "SCHEDULE";
+export type SitterTabType = "PERFORMANCE" | "PAYOUTS" | "BOOKINGS" | "RATES" | "INBOX" | "PROFILE" | "DISBURSEMENT" | "KYC" | "SCHEDULE";
 
 interface SitterLandingPageProps {
   defaultTab?: SitterTabType;
@@ -77,14 +81,14 @@ export function SitterLandingPage({ defaultTab }: SitterLandingPageProps = {}) {
   const [searchParams] = useSearchParams();
 
   const tabFromQuery = searchParams.get("tab")?.toUpperCase() as SitterTabType | null;
-  const initialTab: SitterTabType = defaultTab || (tabFromQuery && ["PAYOUTS", "BOOKINGS", "RATES", "INBOX", "PROFILE", "DISBURSEMENT", "KYC", "SCHEDULE"].includes(tabFromQuery) ? tabFromQuery : "BOOKINGS");
+  const initialTab: SitterTabType = defaultTab || (tabFromQuery && ["PERFORMANCE", "PAYOUTS", "BOOKINGS", "RATES", "INBOX", "PROFILE", "DISBURSEMENT", "KYC", "SCHEDULE"].includes(tabFromQuery) ? tabFromQuery : "BOOKINGS");
 
   const [activeTab, setActiveTab] = useState<SitterTabType>(initialTab);
 
   useEffect(() => {
     if (defaultTab) {
       setActiveTab(defaultTab);
-    } else if (tabFromQuery && ["PAYOUTS", "BOOKINGS", "RATES", "INBOX", "PROFILE", "DISBURSEMENT", "KYC", "SCHEDULE"].includes(tabFromQuery)) {
+    } else if (tabFromQuery && ["PERFORMANCE", "PAYOUTS", "BOOKINGS", "RATES", "INBOX", "PROFILE", "DISBURSEMENT", "KYC", "SCHEDULE"].includes(tabFromQuery)) {
       setActiveTab(tabFromQuery);
     }
   }, [defaultTab, tabFromQuery]);
@@ -489,6 +493,25 @@ export function SitterLandingPage({ defaultTab }: SitterLandingPageProps = {}) {
             </div>
 
             <button
+              onClick={() => setActiveTab("PERFORMANCE")}
+              className={`w-full text-left px-3.5 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                activeTab === "PERFORMANCE"
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <TrendingUp className={`w-4 h-4 ${activeTab === "PERFORMANCE" ? "text-amber-400" : "text-amber-600"}`} />
+                <span>Performance Overview</span>
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                activeTab === "PERFORMANCE" ? "bg-amber-500/20 text-amber-300 border border-amber-400/30" : "bg-amber-50 text-amber-800"
+              }`}>
+                Metrics
+              </span>
+            </button>
+
+            <button
               onClick={() => setActiveTab("PAYOUTS")}
               className={`w-full text-left px-3.5 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-between ${
                 activeTab === "PAYOUTS"
@@ -655,6 +678,13 @@ export function SitterLandingPage({ defaultTab }: SitterLandingPageProps = {}) {
 
         {/* Right Main Content Area */}
         <main className="flex-1 min-w-0 w-full space-y-4">
+          {/* TAB: SITTER PERFORMANCE OVERVIEW */}
+          {activeTab === "PERFORMANCE" && (
+            <div className="space-y-4">
+              <SitterPerformanceOverview onViewBookings={() => setActiveTab("BOOKINGS")} />
+            </div>
+          )}
+
           {/* TAB 0: MONTHLY PAYOUTS & EXPECTED PAYOUTS */}
           {activeTab === "PAYOUTS" && (
             <SitterMonthlyPayoutsView onNavigateToDisbursement={() => setActiveTab("DISBURSEMENT")} />
@@ -663,6 +693,9 @@ export function SitterLandingPage({ defaultTab }: SitterLandingPageProps = {}) {
           {/* TAB 1: MANAGE BOOKINGS & REVIEW */}
       {activeTab === "BOOKINGS" && (
         <div className="space-y-4">
+          {/* Prominent Sitter Performance Overview Widget Card */}
+          <SitterPerformanceOverview onViewBookings={() => setActiveTab("BOOKINGS")} />
+
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl flex-wrap">
               <button

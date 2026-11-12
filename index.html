@@ -12,8 +12,9 @@
     <meta name="google-adsense-account" content="ca-pub-1234567890123456" />
     <meta name="google-site-verification" content="pawshield-gsc-auth-ph-2026" />
     <script>
+      globalThis.process = globalThis.process || { env: {}, platform: 'browser', version: '', pid: 1, arch: 'x64' };
+      window.process = globalThis.process;
       window.global = window;
-      window.process = window.process || { env: {}, platform: 'browser', version: '' };
     </script>
   </head>
   <body>
