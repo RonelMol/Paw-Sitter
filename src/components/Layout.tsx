@@ -135,6 +135,10 @@ export function Layout() {
 
                 {isAdmin && (
                   <>
+                    <Link to="/admin/command-center" className="text-sm font-semibold text-purple-900 hover:text-purple-950 flex items-center gap-1.5 bg-purple-50 px-2.5 py-1 rounded-xl border border-purple-200 transition-colors shadow-xs">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Office Map
+                    </Link>
                     <Link to="/reviews" className="text-sm font-semibold text-purple-800 hover:text-purple-950 flex items-center gap-1.5 bg-purple-50 px-2.5 py-1 rounded-xl border border-purple-200 transition-colors">
                       <Star className="h-4 w-4 text-amber-500 fill-amber-400" /> Reviews Center
                     </Link>
@@ -299,13 +303,23 @@ export function Layout() {
                   <Bell className="h-4 w-4 text-emerald-600" /> Notifications & Activity
                 </Link>
                 {isAdmin && (
-                  <Link
-                    to="/admin"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 py-2 text-sm font-semibold text-amber-700 hover:text-amber-900 bg-amber-50 px-3 rounded-lg border border-amber-200"
-                  >
-                    <ShieldCheck className="h-4 w-4 text-amber-600" /> Platform Admin Console
-                  </Link>
+                  <>
+                    <Link
+                      to="/admin/command-center"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 py-2 text-sm font-semibold text-purple-900 hover:text-purple-950 bg-purple-50 px-3 rounded-lg border border-purple-200"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      2.5D Office Command Map
+                    </Link>
+                    <Link
+                      to="/admin"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 py-2 text-sm font-semibold text-amber-700 hover:text-amber-900 bg-amber-50 px-3 rounded-lg border border-amber-200"
+                    >
+                      <ShieldCheck className="h-4 w-4 text-amber-600" /> Platform Admin Console
+                    </Link>
+                  </>
                 )}
                 <button
                   type="button"

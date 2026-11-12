@@ -23,10 +23,19 @@ import { aiHomepageAgentRouter } from "./src/routes/aiHomepageAgent.ts";
 import { krawlRouter, handleDecoyEnv, handleDecoyBackup } from "./src/routes/krawl.ts";
 import { reviewsRouter } from "./src/routes/reviews.ts";
 import { SystemMetricsService } from "./src/services/SystemMetricsService.ts";
-import { pool } from "./src/db/index.ts";
+import { pool, db, pglite } from "./src/db/index.ts";
+import { migrate } from "drizzle-orm/pglite/migrator";
+import { officeAgentService } from "./src/services/OfficeAgentService.ts";
 
 async function initDbTables() {
   try {
+    try {
+      await pglite.waitReady;
+      await migrate(db, { migrationsFolder: "./drizzle" });
+      console.log("Database schema migrations verified and applied successfully.");
+    } catch (migErr) {
+      console.warn("Schema migration note:", migErr);
+    }
     await pool.query(`
       CREATE TABLE IF NOT EXISTS reviews (
         id SERIAL PRIMARY KEY,
@@ -659,35 +668,59 @@ async function initDbTables() {
     }
 
     // Ensure default test sitter for platform access
-    const sitterCheck = await pool.query("SELECT id FROM users WHERE LOWER(email) = 'sitter@pawshield.com'");
-    if (sitterCheck.rows.length === 0) {
-      const sitterRes = await pool.query(
-        "INSERT INTO users (uid, email, name, role, password_hash, is_verified, phone) VALUES ($1, $2, $3, $4, $5, TRUE, $6) RETURNING id",
-        ["seed_sitter_pawshield_uid", "sitter@pawshield.com", "Sarah Jenkins (Certified Sitter)", "PET_SITTER", "123", "+639171234567"]
-      );
-      if (sitterRes.rows.length > 0) {
-        const newSitterId = sitterRes.rows[0].id;
-        await pool.query(
-          "INSERT INTO sitter_profiles (user_id, bio, experience_years, address, city, hourly_rate, is_active) VALUES ($1, $2, $3, $4, $5, $6, TRUE) ON CONFLICT DO NOTHING",
-          [newSitterId, "Certified, loving pet sitter with 6+ years experience in cat and dog boarding and sitting.", 6, "Legaspi Village, Makati City", "Makati City", 350]
+    try {
+      const sitterCheck = await pool.query("SELECT id FROM users WHERE LOWER(email) = 'sitter@pawshield.com'");
+      if (sitterCheck.rows.length === 0) {
+        const sitterRes = await pool.query(
+          "INSERT INTO users (uid, email, name, role, password_hash, is_verified, phone) VALUES ($1, $2, $3, $4, $5, TRUE, $6) RETURNING id",
+          ["seed_sitter_pawshield_uid", "sitter@pawshield.com", "Sarah Jenkins (Certified Sitter)", "PET_SITTER", "123", "+639171234567"]
         );
+        if (sitterRes.rows.length > 0) {
+          const newSitterId = sitterRes.rows[0].id;
+          try {
+            await pool.query(
+              "INSERT INTO sitter_profiles (user_id, bio, experience_details, sitter_tier, rate_approval_status) VALUES ($1, $2, $3, 'PRO', 'APPROVED') ON CONFLICT DO NOTHING",
+              [newSitterId, "Certified, loving pet sitter with 6+ years experience in cat and dog boarding and sitting.", "6 years pet care experience, canine CPR certified."]
+            );
+            await pool.query(
+              "INSERT INTO sitter_rate_cards (sitter_id, modality, base_rate) VALUES ($1, 'DROP_IN', 35000), ($1, 'BOARDING', 70000) ON CONFLICT DO NOTHING",
+              [newSitterId]
+            );
+          } catch (spErr) {
+            console.warn("sitter profile seed note:", spErr);
+          }
+        }
       }
+    } catch (sitterErr) {
+      console.warn("Error seeding sitter@pawshield.com:", sitterErr);
     }
 
     // Ensure Sitter 2 account exists for QA testing and quick login
-    const sitter2Check = await pool.query("SELECT id FROM users WHERE LOWER(email) = 'sitter2@yahoo.com'");
-    if (sitter2Check.rows.length === 0) {
-      const sitter2Res = await pool.query(
-        "INSERT INTO users (uid, email, name, role, password_hash, is_verified, phone) VALUES ($1, $2, $3, $4, $5, TRUE, $6) RETURNING id",
-        ["seed_sitter2_uid", "sitter2@yahoo.com", "Maria Santos (Pet Sitter 2)", "PET_SITTER", "123", "+639171234568"]
-      );
-      if (sitter2Res.rows.length > 0) {
-        const s2Id = sitter2Res.rows[0].id;
-        await pool.query(
-          "INSERT INTO sitter_profiles (user_id, bio, experience_years, address, city, hourly_rate, is_active) VALUES ($1, $2, $3, $4, $5, $6, TRUE) ON CONFLICT DO NOTHING",
-          [s2Id, "Experienced dog walker and pet sitter with specialized senior pet care certification.", 4, "Salcedo Village, Makati City", "Makati City", 300]
+    try {
+      const sitter2Check = await pool.query("SELECT id FROM users WHERE LOWER(email) = 'sitter2@yahoo.com'");
+      if (sitter2Check.rows.length === 0) {
+        const sitter2Res = await pool.query(
+          "INSERT INTO users (uid, email, name, role, password_hash, is_verified, phone) VALUES ($1, $2, $3, $4, $5, TRUE, $6) RETURNING id",
+          ["seed_sitter2_uid", "sitter2@yahoo.com", "Maria Santos (Pet Sitter 2)", "PET_SITTER", "123", "+639171234568"]
         );
+        if (sitter2Res.rows.length > 0) {
+          const s2Id = sitter2Res.rows[0].id;
+          try {
+            await pool.query(
+              "INSERT INTO sitter_profiles (user_id, bio, experience_details, sitter_tier, rate_approval_status) VALUES ($1, $2, $3, 'STANDARD', 'APPROVED') ON CONFLICT DO NOTHING",
+              [s2Id, "Experienced dog walker and pet sitter with specialized senior pet care certification.", "4 years experience with senior pets and dogs."]
+            );
+            await pool.query(
+              "INSERT INTO sitter_rate_cards (sitter_id, modality, base_rate) VALUES ($1, 'DROP_IN', 30000), ($1, 'BOARDING', 60000) ON CONFLICT DO NOTHING",
+              [s2Id]
+            );
+          } catch (sp2Err) {
+            console.warn("sitter2 profile seed note:", sp2Err);
+          }
+        }
       }
+    } catch (s2Err) {
+      console.warn("Error seeding sitter2@yahoo.com:", s2Err);
     }
 
     // Seed disbursement submissions trail if empty
@@ -1061,6 +1094,19 @@ Sitemap: https://pawshield.local/sitemap.xml
   app.use("/api/search", searchRouter);
   app.use("/api/pricing", pricingRouter);
   app.use("/api/payments", requireAuth, paymentsRouter);
+  
+  // Real-Time 2.5D Virtual Office Floor Map Stream & State
+  app.get("/api/v1/office/stream", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+    officeAgentService.subscribeClient(res);
+  });
+  app.get("/api/v1/office/status", (req, res) => {
+    res.json(officeAgentService.getState());
+  });
+
   app.use("/api/v1/admin", requireAuth, adminRouter);
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/homepage-config", homepageRouter);

@@ -8,6 +8,7 @@ import { NotificationService } from "../services/NotificationService.ts";
 import { hashPassword } from "../lib/server-auth.ts";
 import { SystemMetricsService } from "../services/SystemMetricsService.ts";
 import { OwaspAuditService } from "../services/OwaspAuditService.ts";
+import { officeAgentService, AgentId } from "../services/OfficeAgentService.ts";
 
 export const adminRouter = Router();
 
@@ -3162,6 +3163,55 @@ adminRouter.delete("/security/owasp/scan/:id", requireRole(["ADMIN"]), async (re
     res.json({ success, message: "Audit report deleted successfully" });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to delete audit report", cause: error.message });
+  }
+});
+
+// =========================================================================
+// 2.5D ISOMETRIC VIRTUAL OFFICE COMMAND CENTER API
+// =========================================================================
+
+// GET /api/v1/admin/office/status - Full office state snapshot
+adminRouter.get("/office/status", requireRole(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const state = officeAgentService.getState();
+    res.json(state);
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to fetch office state", cause: error.message });
+  }
+});
+
+// GET /api/v1/admin/office/stream - Real-Time Server-Sent Events (SSE) Stream
+adminRouter.get("/office/stream", async (req: AuthRequest, res: Response) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  officeAgentService.subscribeClient(res);
+});
+
+// POST /api/v1/admin/office/dispatch - Dispatch an active mission to an AI employee
+adminRouter.post("/office/dispatch", requireRole(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { agentId, missionType, customMessage } = req.body;
+    if (!agentId) {
+      return res.status(400).json({ error: "agentId is required" });
+    }
+    const result = await officeAgentService.dispatchMission(agentId as AgentId, missionType || "GENERAL_TASK", customMessage);
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    res.status(500).json({ error: "Mission dispatch failed", cause: error.message });
+  }
+});
+
+// POST /api/v1/admin/office/speed - Change simulation speed
+adminRouter.post("/office/speed", requireRole(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { speed } = req.body;
+    officeAgentService.setSpeed(speed === 2 ? 2 : 1);
+    res.json({ success: true, speed: speed === 2 ? 2 : 1 });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to set speed", cause: error.message });
   }
 });
 

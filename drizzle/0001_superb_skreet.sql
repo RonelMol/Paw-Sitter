@@ -1,5 +1,5 @@
 ALTER TYPE "public"."booking_status" ADD VALUE 'IN_PROGRESS' BEFORE 'CANCELLED';--> statement-breakpoint
-CREATE TABLE "adsense_compliance_audits" (
+CREATE TABLE IF NOT EXISTS "adsense_compliance_audits" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"audit_scope" text DEFAULT 'FULL_APP' NOT NULL,
 	"status" text DEFAULT 'COMPLETED' NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE "adsense_compliance_audits" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "ai_agent_brain_memory" (
+CREATE TABLE IF NOT EXISTS "ai_agent_brain_memory" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"memory_type" text DEFAULT 'CONSOLE_ROOT_CAUSE' NOT NULL,
 	"fingerprint" text NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE "ai_agent_brain_memory" (
 	CONSTRAINT "ai_agent_brain_memory_fingerprint_unique" UNIQUE("fingerprint")
 );
 --> statement-breakpoint
-CREATE TABLE "ai_strategic_plans" (
+CREATE TABLE IF NOT EXISTS "ai_strategic_plans" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"title" text NOT NULL,
 	"status" text DEFAULT 'COMPLETED' NOT NULL,
@@ -59,14 +59,14 @@ CREATE TABLE "ai_strategic_plans" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "booking_pets" (
+CREATE TABLE IF NOT EXISTS "booking_pets" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"booking_id" integer NOT NULL,
 	"pet_id" integer NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "console_error_telemetry" (
+CREATE TABLE IF NOT EXISTS "console_error_telemetry" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"fingerprint" text NOT NULL,
 	"error_message" text NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE "console_error_telemetry" (
 	"last_seen_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "google_search_console_configs" (
+CREATE TABLE IF NOT EXISTS "google_search_console_configs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"site_url" text DEFAULT 'https://pawshield.ph' NOT NULL,
 	"verification_tag" text DEFAULT 'google-site-verification=GSC_PAWSHIELD_AUTH_2026_TOKEN',
@@ -93,7 +93,7 @@ CREATE TABLE "google_search_console_configs" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "owasp_security_audits" (
+CREATE TABLE IF NOT EXISTS "owasp_security_audits" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"scan_type" text DEFAULT 'FULL_OWASP_2026' NOT NULL,
 	"overall_score" integer DEFAULT 100 NOT NULL,
@@ -111,7 +111,7 @@ CREATE TABLE "owasp_security_audits" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "service_rate_policies" (
+CREATE TABLE IF NOT EXISTS "service_rate_policies" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"modality" text NOT NULL,
 	"title" text NOT NULL,

@@ -6,6 +6,19 @@ import fs from "fs";
 
 // Ensure persistent storage directory exists
 const dataDir = path.resolve(process.cwd(), "data/postgres");
+
+// If directory exists with partial contents but is missing postgresql.conf, it is corrupted from an incomplete initial write
+const confFile = path.join(dataDir, "postgresql.conf");
+if (fs.existsSync(dataDir)) {
+  try {
+    const files = fs.readdirSync(dataDir);
+    if (files.length > 0 && !fs.existsSync(confFile)) {
+      console.warn("Corrupted PGlite directory detected without postgresql.conf. Resetting data directory...");
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  } catch {}
+}
+
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
@@ -25,7 +38,19 @@ declare global {
 
 export const getPgLiteInstance = (): PGlite => {
   if (!global._pgliteInstance) {
-    global._pgliteInstance = new PGlite(dataDir);
+    try {
+      global._pgliteInstance = new PGlite(dataDir);
+    } catch (initErr) {
+      console.warn("Primary PGlite persistent directory initialization error, auto-recovering:", initErr);
+      try {
+        fs.rmSync(dataDir, { recursive: true, force: true });
+        fs.mkdirSync(dataDir, { recursive: true });
+        global._pgliteInstance = new PGlite(dataDir);
+      } catch (fallbackErr) {
+        console.warn("Falling back to in-memory PGlite instance:", fallbackErr);
+        global._pgliteInstance = new PGlite();
+      }
+    }
   }
   return global._pgliteInstance;
 };
@@ -66,6 +91,13 @@ export const createPool = (): PoolAdapter => {
     const pg = pglite;
 
     const queryFn = async <T = any>(textOrConfig: any, params?: any, callback?: any): Promise<QueryResult<T>> => {
+      // Ensure PGlite WASM engine is fully loaded and ready
+      try {
+        await pg.waitReady;
+      } catch (waitErr) {
+        console.warn("PGlite waitReady note:", waitErr);
+      }
+
       let sqlText: string;
       let values: any[] | undefined;
       const cb = typeof params === "function" ? params : callback;

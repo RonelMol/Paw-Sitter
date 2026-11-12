@@ -67,8 +67,8 @@ authRouter.post("/login-email", async (req: Request, res: Response) => {
       user
     });
   } catch (err: any) {
-    console.error("Login email error:", err);
-    res.status(500).json({ error: "Authentication failed", cause: err.message });
+    console.error("Login email error:", err, "Cause:", err.cause);
+    res.status(500).json({ error: "Authentication failed", cause: err.message, innerCause: String(err.cause?.message || err.cause) });
   }
 });
 

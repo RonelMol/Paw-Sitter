@@ -3,7 +3,7 @@ CREATE TYPE "public"."meet_and_greet_status" AS ENUM('REQUESTED', 'SCHEDULED', '
 CREATE TYPE "public"."payment_status" AS ENUM('PENDING', 'AUTHORIZED', 'HELD_IN_ESCROW', 'RELEASED', 'REFUNDED', 'DISPUTED');--> statement-breakpoint
 CREATE TYPE "public"."user_role" AS ENUM('PET_OWNER', 'PET_SITTER', 'ADMIN', 'SUPPORT_AGENT');--> statement-breakpoint
 CREATE TYPE "public"."service_modality" AS ENUM('BOARDING', 'HOUSE_SITTING', 'DROP_IN', 'DAY_CARE', 'DOG_WALKING');--> statement-breakpoint
-CREATE TABLE "adsense_configs" (
+CREATE TABLE IF NOT EXISTS "adsense_configs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"publisher_client_id" text DEFAULT 'ca-pub-1234567890123456' NOT NULL,
 	"header_slot_id" text DEFAULT '1234567890',
@@ -19,7 +19,7 @@ CREATE TABLE "adsense_configs" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "ai_qa_findings" (
+CREATE TABLE IF NOT EXISTS "ai_qa_findings" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"run_id" integer NOT NULL,
 	"module_name" text NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE "ai_qa_findings" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "ai_qa_runs" (
+CREATE TABLE IF NOT EXISTS "ai_qa_runs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"suite_name" text NOT NULL,
 	"target_module" text DEFAULT 'ALL' NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE "ai_qa_runs" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "app_bug_reports" (
+CREATE TABLE IF NOT EXISTS "app_bug_reports" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"module_name" text NOT NULL,
 	"severity" text DEFAULT 'LOW' NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE "app_bug_reports" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "app_kyc_submissions_trail" (
+CREATE TABLE IF NOT EXISTS "app_kyc_submissions_trail" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"legal_first_name" text NOT NULL,
@@ -94,7 +94,7 @@ CREATE TABLE "app_kyc_submissions_trail" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "audit_logs" (
+CREATE TABLE IF NOT EXISTS "audit_logs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"actor_uid" text,
 	"table_name" text NOT NULL,
@@ -106,7 +106,7 @@ CREATE TABLE "audit_logs" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "booking_financial_snapshots" (
+CREATE TABLE IF NOT EXISTS "booking_financial_snapshots" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"booking_id" integer NOT NULL,
 	"base_rate_applied" integer NOT NULL,
@@ -130,7 +130,7 @@ CREATE TABLE "booking_financial_snapshots" (
 	CONSTRAINT "booking_financial_snapshots_booking_id_unique" UNIQUE("booking_id")
 );
 --> statement-breakpoint
-CREATE TABLE "booking_messages" (
+CREATE TABLE IF NOT EXISTS "booking_messages" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"booking_id" integer NOT NULL,
 	"sender_id" integer NOT NULL,
@@ -142,7 +142,7 @@ CREATE TABLE "booking_messages" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bookings" (
+CREATE TABLE IF NOT EXISTS "bookings" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"owner_id" integer NOT NULL,
 	"sitter_id" integer NOT NULL,
@@ -154,7 +154,7 @@ CREATE TABLE "bookings" (
 	CONSTRAINT "time_check" CHECK ("bookings"."end_time" > "bookings"."start_time")
 );
 --> statement-breakpoint
-CREATE TABLE "buy_me_coffee_configs" (
+CREATE TABLE IF NOT EXISTS "buy_me_coffee_configs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"is_enabled" boolean DEFAULT true NOT NULL,
 	"require_for_cash" boolean DEFAULT true NOT NULL,
@@ -165,7 +165,7 @@ CREATE TABLE "buy_me_coffee_configs" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "coffee_tips" (
+CREATE TABLE IF NOT EXISTS "coffee_tips" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer,
 	"booking_id" integer,
@@ -177,7 +177,7 @@ CREATE TABLE "coffee_tips" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "custom_roles" (
+CREATE TABLE IF NOT EXISTS "custom_roles" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"permissions" jsonb DEFAULT '{}'::jsonb NOT NULL,
@@ -185,7 +185,7 @@ CREATE TABLE "custom_roles" (
 	CONSTRAINT "custom_roles_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
-CREATE TABLE "disbursement_submissions_trail" (
+CREATE TABLE IF NOT EXISTS "disbursement_submissions_trail" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"bank_name" text NOT NULL,
@@ -200,7 +200,7 @@ CREATE TABLE "disbursement_submissions_trail" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "meet_and_greets" (
+CREATE TABLE IF NOT EXISTS "meet_and_greets" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"owner_id" integer NOT NULL,
 	"sitter_id" integer NOT NULL,
@@ -211,7 +211,7 @@ CREATE TABLE "meet_and_greets" (
 	"sitter_confirmed" boolean DEFAULT false
 );
 --> statement-breakpoint
-CREATE TABLE "notifications" (
+CREATE TABLE IF NOT EXISTS "notifications" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"target_role" text DEFAULT 'ALL' NOT NULL,
@@ -227,7 +227,7 @@ CREATE TABLE "notifications" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "payments" (
+CREATE TABLE IF NOT EXISTS "payments" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"booking_id" integer NOT NULL,
 	"stripe_payment_intent_id" text,
@@ -238,7 +238,7 @@ CREATE TABLE "payments" (
 	CONSTRAINT "payments_transfer_group_unique" UNIQUE("transfer_group")
 );
 --> statement-breakpoint
-CREATE TABLE "pet_care_activities" (
+CREATE TABLE IF NOT EXISTS "pet_care_activities" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"booking_id" integer NOT NULL,
 	"title" text NOT NULL,
@@ -254,7 +254,7 @@ CREATE TABLE "pet_care_activities" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "pets" (
+CREATE TABLE IF NOT EXISTS "pets" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"owner_id" integer NOT NULL,
 	"name" text NOT NULL,
@@ -270,7 +270,7 @@ CREATE TABLE "pets" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "platform_fee_configs" (
+CREATE TABLE IF NOT EXISTS "platform_fee_configs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"owner_fee_percentage" numeric(7, 4) NOT NULL,
 	"owner_fee_cap" integer,
@@ -279,7 +279,7 @@ CREATE TABLE "platform_fee_configs" (
 	"effective_from" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "referral_attributions" (
+CREATE TABLE IF NOT EXISTS "referral_attributions" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"referral_code" text NOT NULL,
 	"referrer_user_id" integer NOT NULL,
@@ -290,7 +290,7 @@ CREATE TABLE "referral_attributions" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "referrals" (
+CREATE TABLE IF NOT EXISTS "referrals" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"referral_code" text NOT NULL,
@@ -304,7 +304,7 @@ CREATE TABLE "referrals" (
 	CONSTRAINT "referrals_referral_code_unique" UNIQUE("referral_code")
 );
 --> statement-breakpoint
-CREATE TABLE "runtime_environment_configs" (
+CREATE TABLE IF NOT EXISTS "runtime_environment_configs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"config_key" text NOT NULL,
 	"config_value" text NOT NULL,
@@ -316,7 +316,7 @@ CREATE TABLE "runtime_environment_configs" (
 	CONSTRAINT "runtime_environment_configs_config_key_unique" UNIQUE("config_key")
 );
 --> statement-breakpoint
-CREATE TABLE "sitter_availabilities" (
+CREATE TABLE IF NOT EXISTS "sitter_availabilities" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"sitter_id" integer NOT NULL,
 	"day_of_week" integer NOT NULL,
@@ -324,14 +324,14 @@ CREATE TABLE "sitter_availabilities" (
 	"end_time" time NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sitter_blockouts" (
+CREATE TABLE IF NOT EXISTS "sitter_blockouts" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"sitter_id" integer NOT NULL,
 	"start_date" date NOT NULL,
 	"end_date" date NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sitter_payout_disbursements" (
+CREATE TABLE IF NOT EXISTS "sitter_payout_disbursements" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"booking_id" integer,
 	"sitter_id" integer NOT NULL,
@@ -349,7 +349,7 @@ CREATE TABLE "sitter_payout_disbursements" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sitter_profiles" (
+CREATE TABLE IF NOT EXISTS "sitter_profiles" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"bio" text,
@@ -368,7 +368,7 @@ CREATE TABLE "sitter_profiles" (
 	CONSTRAINT "sitter_profiles_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "sitter_rate_cards" (
+CREATE TABLE IF NOT EXISTS "sitter_rate_cards" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"sitter_id" integer NOT NULL,
 	"modality" "service_modality" NOT NULL,
@@ -382,7 +382,7 @@ CREATE TABLE "sitter_rate_cards" (
 	CONSTRAINT "base_rate_check" CHECK ("sitter_rate_cards"."base_rate" > 0)
 );
 --> statement-breakpoint
-CREATE TABLE "sitter_verifications" (
+CREATE TABLE IF NOT EXISTS "sitter_verifications" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"legal_first_name" text NOT NULL,
@@ -413,7 +413,7 @@ CREATE TABLE "sitter_verifications" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user_memberships" (
+CREATE TABLE IF NOT EXISTS "user_memberships" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"plan_type" text DEFAULT 'FREE_TIER' NOT NULL,
@@ -429,7 +429,7 @@ CREATE TABLE "user_memberships" (
 	CONSTRAINT "user_memberships_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"uid" text NOT NULL,
 	"name" text,
@@ -454,7 +454,7 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-CREATE TABLE "vet_authorizations" (
+CREATE TABLE IF NOT EXISTS "vet_authorizations" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"pet_id" integer NOT NULL,
 	"clinic_name" text NOT NULL,
@@ -465,7 +465,7 @@ CREATE TABLE "vet_authorizations" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "visit_checkin_cards" (
+CREATE TABLE IF NOT EXISTS "visit_checkin_cards" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"booking_id" integer NOT NULL,
 	"check_in_time" timestamp DEFAULT now() NOT NULL,

@@ -38,6 +38,7 @@ import { AdminGoogleAnalyticsPage } from "./pages/AdminGoogleAnalyticsPage";
 import { AdminAIUXResearchPage } from "./pages/AdminAIUXResearchPage";
 import { AdminPayoutsPage } from "./pages/AdminPayoutsPage";
 import { AdminDatabasePage } from "./pages/AdminDatabasePage";
+import { AdminCommandCenterPage } from "./pages/AdminCommandCenterPage";
 
 import { LandingPage } from "./pages/LandingPage";
 import { SitterLandingPage } from "./pages/SitterLandingPage";
@@ -207,7 +208,10 @@ export default function App() {
                           </ProtectedRoute>
                         }
                       >
-                        <Route index element={<Navigate to="activities" replace />} />
+                        <Route index element={<Navigate to="command-center" replace />} />
+                        <Route path="command-center" element={<AdminCommandCenterPage />} />
+                        <Route path="office-map" element={<AdminCommandCenterPage />} />
+                        <Route path="virtual-office" element={<AdminCommandCenterPage />} />
                         <Route path="payouts" element={<AdminPayoutsPage />} />
                         <Route path="escrow" element={<AdminPayoutsPage />} />
                         <Route path="coffee" element={<AdminBuyMeCoffeePage />} />

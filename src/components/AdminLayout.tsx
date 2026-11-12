@@ -35,8 +35,9 @@ export function AdminLayout({ children }: AdminLayoutProps = {}) {
 
   const navGroups: NavGroup[] = [
     {
-      groupTitle: "Operations & Care",
+      groupTitle: "Virtual Office & Real-Time Ops",
       items: [
+        { name: "Virtual Office Floor Map", path: "/admin/command-center", icon: Radar, badge: "2.5D Live", badgeColor: "bg-purple-100 text-purple-800" },
         { name: "Sitter Activities", path: "/admin/activities", icon: CheckCircle2 },
         { name: "Coffee Maintenance", path: "/admin/coffee", icon: Coffee, badge: "₱150", badgeColor: "bg-amber-100 text-amber-800" },
         { name: "User Management", path: "/admin/users", icon: Users },
