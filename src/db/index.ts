@@ -40,13 +40,25 @@ export const QueryResult = {};
 export const PoolClient = {};
 export const PoolAdapter = {};
 
-const isRemoteDb = Boolean(process.env.DATABASE_URL);
+const getConnectionString = () => {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.SUPABASE_DATABASE_URL ||
+    (process.env.POSTGRES_HOST
+      ? `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT || 5432}/${process.env.POSTGRES_DATABASE || "postgres"}`
+      : undefined)
+  );
+};
+
+const isRemoteDb = Boolean(getConnectionString());
 
 // --- Remote PostgreSQL (Supabase / Cloud SQL) Support ---
 export const createRemotePool = (): Pool => {
   if (!global._postgresPool) {
     const config: PoolConfig = {
-      connectionString: process.env.DATABASE_URL,
+      connectionString: getConnectionString(),
       ssl: { rejectUnauthorized: false },
       max: 10,
       connectionTimeoutMillis: 15000,

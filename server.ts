@@ -1,7 +1,6 @@
 import "dotenv/config";
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { requireAuth } from "./src/middleware/auth.ts";
 import { authRouter } from "./src/routes/auth.ts";
 import { bookingsRouter } from "./src/routes/bookings.ts";
@@ -25,13 +24,13 @@ import { krawlRouter, handleDecoyEnv, handleDecoyBackup } from "./src/routes/kra
 import { reviewsRouter } from "./src/routes/reviews.ts";
 import { SystemMetricsService } from "./src/services/SystemMetricsService.ts";
 import { pool, db, pglite } from "./src/db/index.ts";
-import { migrate } from "drizzle-orm/pglite/migrator";
 import { officeAgentService } from "./src/services/OfficeAgentService.ts";
 
 async function initDbTables() {
   try {
     try {
       if (pglite) {
+        const { migrate } = await import("drizzle-orm/pglite/migrator");
         await pglite.waitReady;
         await migrate(db, { migrationsFolder: "./drizzle" });
         console.log("Database schema migrations verified and applied successfully.");
@@ -1136,6 +1135,7 @@ export async function startServer() {
   await initDbTables();
 
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
