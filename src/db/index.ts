@@ -1,15 +1,16 @@
 import { drizzle as drizzleNodePg } from "drizzle-orm/node-postgres";
-import { drizzle as drizzlePgLite } from "drizzle-orm/pglite";
-import { PGlite } from "@electric-sql/pglite";
 import { Pool } from "pg";
 import type { PoolConfig } from "pg";
 import * as schema from "./schema.ts";
 import path from "path";
 import fs from "fs";
+import { createRequire } from "module";
+
+const requireModule = createRequire(import.meta.url);
 
 declare global {
   var _postgresPool: Pool | undefined;
-  var _pgliteInstance: PGlite | undefined;
+  var _pgliteInstance: any;
   var _postgresPoolAdapter: PoolAdapter | undefined;
 }
 
@@ -52,7 +53,8 @@ const getConnectionString = () => {
   );
 };
 
-const isRemoteDb = Boolean(getConnectionString());
+const connStr = getConnectionString();
+const isRemoteDb = Boolean(connStr);
 
 // --- Remote PostgreSQL (Supabase / Cloud SQL) Support ---
 export const createRemotePool = (): Pool => {
@@ -71,7 +73,7 @@ export const createRemotePool = (): Pool => {
   return global._postgresPool;
 };
 
-// --- Local PGlite WASM Support ---
+// --- Local PGlite WASM Support (dynamic imported for local dev only) ---
 const dataDir = path.resolve(process.cwd(), "data/postgres");
 
 const initPgLiteFilesystem = () => {
@@ -100,30 +102,32 @@ const initPgLiteFilesystem = () => {
   }
 };
 
-export const getPgLiteInstance = (): PGlite => {
+const getPgLiteInstance = (PGliteClass: any): any => {
   if (!global._pgliteInstance) {
-    initPgLiteFilesystem();
-    try {
-      global._pgliteInstance = new PGlite(dataDir);
-    } catch (initErr) {
-      console.warn("Primary PGlite persistent directory initialization error, auto-recovering:", initErr);
+    if (process.env.VERCEL) {
+      global._pgliteInstance = new PGliteClass();
+    } else {
+      initPgLiteFilesystem();
       try {
-        fs.rmSync(dataDir, { recursive: true, force: true });
-        fs.mkdirSync(dataDir, { recursive: true });
-        global._pgliteInstance = new PGlite(dataDir);
-      } catch (fallbackErr) {
-        console.warn("Falling back to in-memory PGlite instance:", fallbackErr);
-        global._pgliteInstance = new PGlite();
+        global._pgliteInstance = new PGliteClass(dataDir);
+      } catch (initErr) {
+        console.warn("Primary PGlite persistent directory initialization error, auto-recovering:", initErr);
+        try {
+          fs.rmSync(dataDir, { recursive: true, force: true });
+          fs.mkdirSync(dataDir, { recursive: true });
+          global._pgliteInstance = new PGliteClass(dataDir);
+        } catch (fallbackErr) {
+          console.warn("Falling back to in-memory PGlite instance:", fallbackErr);
+          global._pgliteInstance = new PGliteClass();
+        }
       }
     }
   }
   return global._pgliteInstance;
 };
 
-export const createPgLitePoolAdapter = (): PoolAdapter => {
+const createPgLitePoolAdapter = (pg: any): PoolAdapter => {
   if (!global._postgresPoolAdapter) {
-    const pg = getPgLiteInstance();
-
     const queryFn = async <T = any>(textOrConfig: any, params?: any, callback?: any): Promise<QueryResult<T>> => {
       try {
         await pg.waitReady;
@@ -184,7 +188,7 @@ export const createPgLitePoolAdapter = (): PoolAdapter => {
       }
 
       try {
-        const res = await pg.query<T>(sqlText, values);
+        const res = await (pg as any).query(sqlText, values);
         const normalizedRes: QueryResult<T> = {
           rows: (res.rows || []) as T[],
           fields: (res.fields as any[]) || [],
@@ -243,8 +247,23 @@ export const createPgLitePoolAdapter = (): PoolAdapter => {
   return global._postgresPoolAdapter;
 };
 
-// If DATABASE_URL is provided (e.g. on Vercel or locally with Supabase), use pg.Pool and node-postgres.
-// Otherwise, fall back to embedded PGlite for standalone zero-config local development.
-export const pool: any = isRemoteDb ? createRemotePool() : createPgLitePoolAdapter();
-export const pglite: any = isRemoteDb ? undefined : getPgLiteInstance();
-export const db: any = isRemoteDb ? drizzleNodePg(pool, { schema }) : drizzlePgLite(pglite, { schema });
+let poolInstance: any;
+let dbInstance: any;
+let pgliteInstance: any;
+
+if (isRemoteDb) {
+  poolInstance = createRemotePool();
+  dbInstance = drizzleNodePg(poolInstance, { schema });
+  pgliteInstance = undefined;
+} else {
+  // Only loaded in local development without remote DATABASE_URL
+  const { PGlite } = requireModule("@electric-sql/pglite");
+  const { drizzle } = requireModule("drizzle-orm/pglite");
+  pgliteInstance = getPgLiteInstance(PGlite);
+  poolInstance = createPgLitePoolAdapter(pgliteInstance);
+  dbInstance = drizzle(pgliteInstance, { schema });
+}
+
+export const pool: any = poolInstance;
+export const pglite: any = pgliteInstance;
+export const db: any = dbInstance;
