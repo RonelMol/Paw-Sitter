@@ -1,4 +1,4 @@
-import { Router, Response } from "express";
+import { Router, type Response } from "express";
 import { requireAuth, AuthRequest } from "../middleware/auth.ts";
 import { db, pool } from "../db/index.ts";
 import { notifications, users } from "../db/schema.ts";

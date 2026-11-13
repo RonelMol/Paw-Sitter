@@ -69,3 +69,7 @@ export interface OwaspAuditReport {
   triggeredBy: string;
   createdAt: string;
 }
+
+export const OwaspTestResult = {};
+export const OwaspCategorySummary = {};
+export const OwaspAuditReport = {};

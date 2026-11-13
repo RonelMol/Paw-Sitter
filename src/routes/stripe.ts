@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, type Request, type Response } from "express";
 import { getStripe } from "../lib/stripe.ts";
 import { db } from "../db/index.ts";
 import { bookings, payments } from "../db/schema.ts";

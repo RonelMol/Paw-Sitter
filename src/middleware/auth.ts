@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { adminAuth } from "../lib/firebase-admin.ts";
-import { DecodedIdToken } from "firebase-admin/auth";
+import type { DecodedIdToken } from "firebase-admin/auth";
 import { db } from "../db/index.ts";
 import { users } from "../db/schema.ts";
 import { eq } from "drizzle-orm";
@@ -10,6 +10,7 @@ export interface AuthRequest extends Request {
   user?: DecodedIdToken | any;
   dbUser?: any;
 }
+export const AuthRequest = {};
 
 export const requireAuth = async (
   req: AuthRequest,
@@ -49,7 +50,7 @@ export const requireAuth = async (
 
   try {
     req.user = decodedToken;
-    
+
     // Fetch db user for role and suspension checking
     const dbUserResults = await db
       .select()
@@ -76,7 +77,7 @@ export const requireAuth = async (
       if (emailMatch.length > 0) {
         const isSuperAdmin = superAdmins.includes(userEmail);
         const updated = await db.update(users)
-          .set({ 
+          .set({
             uid: decodedToken.uid,
             name: decodedToken.name || emailMatch[0].name,
             role: isSuperAdmin ? "ADMIN" : emailMatch[0].role

@@ -1,4 +1,4 @@
-import { Router, Response, Request } from "express";
+import { Router, type Request, type Response } from "express";
 import { requireRole, requireAuth, AuthRequest } from "../middleware/auth.ts";
 import { db, pool } from "../db/index.ts";
 import { sitterProfiles, sitterAvailabilities, sitterBlockouts, sitterRateCards, users, bookings, bookingMessages, bookingFinancialSnapshots, payments, sitterPayoutDisbursements } from "../db/schema.ts";

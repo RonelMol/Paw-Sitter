@@ -1,9 +1,12 @@
-import { Response } from "express";
+import type { Response } from "express";
 import { pool } from "../db/index.ts";
 
 export type AgentId = "boss" | "kinsenas" | "librarian" | "vero" | "bantay" | "balanse" | "vercelbot" | "tala";
+export const AgentId = {};
 export type ZoneId = "command_center" | "financial_ops" | "cyber_intel" | "dev_studio" | "pantry_lounge" | "gym_zone";
+export const ZoneId = {};
 export type AgentState = "AT_DESK" | "WALKING" | "IN_LOUNGE" | "IN_MEETING";
+export const AgentState = {};
 
 export interface AgentOfficeProfile {
   id: AgentId;
@@ -484,7 +487,7 @@ class OfficeAgentService {
       ];
       const target = destinations[Math.floor(Math.random() * destinations.length)];
       agent.targetPos = target;
-      
+
       // Determine zone from position
       agent.state = target.x < 38 ? "IN_LOUNGE" : target.y > 64 ? "AT_DESK" : "WALKING";
 

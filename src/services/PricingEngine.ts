@@ -1,7 +1,7 @@
 import { db } from "../db/index.ts";
-import { 
-  sitterRateCards, 
-  platformFeeConfigs, 
+import {
+  sitterRateCards,
+  platformFeeConfigs,
   pets,
   bookingFinancialSnapshots,
   serviceModalityEnum,
@@ -19,6 +19,7 @@ export interface QuoteRequest {
   isHoliday?: boolean; // Flag driven by calendar service/request
   isRushHour?: boolean; // Flag driven by calendar service/request
 }
+export const QuoteRequest = {};
 
 export interface QuoteResponse {
   petCapacity: {
@@ -152,7 +153,7 @@ export class PricingEngine {
     const feeConfigs = await db.select().from(platformFeeConfigs)
       .orderBy(desc(platformFeeConfigs.effectiveFrom))
       .limit(1);
-    
+
     const feeConfig = feeConfigs.length > 0 ? feeConfigs[0] : {
       id: 1,
       ownerFeePercentage: "0.0500",
@@ -166,7 +167,7 @@ export class PricingEngine {
     let puppyCount = 0;
     let medicationCount = 0;
     const totalPets = petIds.length;
-    
+
     if (totalPets > 0) {
       try {
         const petRecords = await db.select().from(pets).where(inArray(pets.id, petIds));
@@ -186,11 +187,11 @@ export class PricingEngine {
 
     // 5. Calculate Subtotals
     const baseSubtotal = blocks * effectiveRate.baseRate;
-    
+
     const extraPetFee = effectiveRate.extraPetFee ?? 0;
     const puppyRate = effectiveRate.puppyRate ?? 0;
     const medicationSurcharge = effectiveRate.medicationSurcharge ?? 0;
-    
+
     const surchargesSubtotal = (
       (extraPetsCount * extraPetFee * blocks) +
       (puppyCount * puppyRate * blocks) +
@@ -200,7 +201,7 @@ export class PricingEngine {
     // 6. Apply Modifiers
     const holidayMult = isHoliday ? parseFloat(effectiveRate.holidayMultiplier || "1.0") : 1.0;
     const rushHourSurcharge = isRushHour ? (effectiveRate.rushHourSurcharge ?? 0) * blocks : 0;
-    
+
     const calculatedBaseTotal = Math.round((baseSubtotal + surchargesSubtotal) * holidayMult) + rushHourSurcharge;
 
     // 7. Platform Fees
@@ -209,7 +210,7 @@ export class PricingEngine {
     const ownerFeeRate = rawOwnerFee > 1 ? rawOwnerFee / 100 : rawOwnerFee;
     const sitterCommissionRate = rawSitterCommission > 1 ? rawSitterCommission / 100 : rawSitterCommission;
     const fixedFee = feeConfig.fixedTransactionFee || 0;
-    
+
     let calculatedOwnerFee = Math.round(calculatedBaseTotal * ownerFeeRate);
     if (feeConfig.ownerFeeCap !== null && calculatedOwnerFee > feeConfig.ownerFeeCap) {
       calculatedOwnerFee = feeConfig.ownerFeeCap;

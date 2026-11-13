@@ -36,6 +36,9 @@ export interface PoolAdapter {
   idleCount: number;
   waitingCount: number;
 }
+export const QueryResult = {};
+export const PoolClient = {};
+export const PoolAdapter = {};
 
 const isRemoteDb = Boolean(process.env.DATABASE_URL);
 

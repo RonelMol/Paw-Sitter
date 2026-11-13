@@ -1,6 +1,6 @@
 import { pool } from "../db/index.ts";
 import os from "os";
-import {
+import type {
   OwaspCategory,
   SeverityLevel,
   TestStatus,
@@ -148,8 +148,8 @@ if (!booking || (booking.ownerId !== req.dbUser.id && booking.sitterId !== req.d
       status: plainPasswordCheck ? "PASSED" : "FAILED",
       targetEndpoint: "/src/lib/server-auth.ts",
       targetFile: "/src/lib/server-auth.ts",
-      evidence: plainPasswordCheck 
-        ? "All database user passwords utilize crypto.pbkdf2 / sha256 salt hashes with high work factor." 
+      evidence: plainPasswordCheck
+        ? "All database user passwords utilize crypto.pbkdf2 / sha256 salt hashes with high work factor."
         : "Found potential unhashed password entries in database.",
       recommendation: "Enforce cryptographic password hashing via hashPassword() on all registration and password reset flows.",
       remediationPrompt: `Open /src/lib/server-auth.ts and /src/routes/auth.ts. Ensure all user password updates pass through hashPassword(password). Never store plaintext passwords in the 'users' table.`,

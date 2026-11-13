@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, type Request, type Response } from "express";
 import crypto from "crypto";
 import { pool } from "../db/index.ts";
 import { GoogleGenAI } from "@google/genai";

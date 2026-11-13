@@ -1,4 +1,4 @@
-import { Router, Response } from "express";
+import { Router, type Response } from "express";
 import { requireRole, AuthRequest } from "../middleware/auth.ts";
 import { db, pool } from "../db/index.ts";
 import { platformFeeConfigs, auditLogs, bookings, bookingFinancialSnapshots, users, customRoles, sitterProfiles, adsenseConfigs, runtimeEnvironmentConfigs } from "../db/schema.ts";
@@ -8,7 +8,7 @@ import { NotificationService } from "../services/NotificationService.ts";
 import { hashPassword } from "../lib/server-auth.ts";
 import { SystemMetricsService } from "../services/SystemMetricsService.ts";
 import { OwaspAuditService } from "../services/OwaspAuditService.ts";
-import { officeAgentService, AgentId } from "../services/OfficeAgentService.ts";
+import { officeAgentService, type AgentId } from "../services/OfficeAgentService.ts";
 
 export const adminRouter = Router();
 
