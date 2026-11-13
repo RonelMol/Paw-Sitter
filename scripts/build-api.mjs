@@ -1,10 +1,21 @@
-// Bundles the Vercel serverless handler into a single ESM file (api/index.js).
-// Most npm packages stay external (loaded from node_modules at runtime), but
-// packages that break under Vercel's loader (CJS jwks-rsa requiring ESM-only jose)
-// are bundled inline so no require() of an ES module happens at runtime.
+// Bundles the Vercel serverless handler into a single self-contained ESM file (api/index.js).
+// Everything is bundled inline so the function never depends on Vercel tracing node_modules.
+// Only dev-only / optional packages that are never loaded in production stay external.
 import { build } from "esbuild";
 
-const BUNDLE_INLINE = /^(firebase-admin|jwks-rsa|jose)(\/|$)/;
+const EXTERNAL = [
+  "vite",
+  "@vitejs/plugin-react",
+  "@tailwindcss/vite",
+  "lightningcss",
+  "fsevents",
+  "esbuild",
+  "@electric-sql/pglite",
+  "@electric-sql/pglite/*",
+  "drizzle-orm/pglite",
+  "drizzle-orm/pglite/*",
+  "pg-native",
+];
 
 await build({
   entryPoints: ["src/vercel-handler.ts"],
@@ -13,6 +24,7 @@ await build({
   platform: "node",
   format: "esm",
   target: "node20",
+  external: EXTERNAL,
   banner: {
     js: [
       "import { createRequire as __cr } from 'module';",
@@ -23,19 +35,5 @@ await build({
       "const __dirname = __dn(__filename);",
     ].join(" "),
   },
-  plugins: [
-    {
-      name: "selective-externals",
-      setup(b) {
-        b.onResolve({ filter: /^[^./]|^\.[^./]|^\.\.[^/]/ }, (args) => {
-          const p = args.path;
-          if (p.startsWith("node:")) return { path: p, external: true };
-          if (BUNDLE_INLINE.test(p)) return undefined; // bundle it
-          return { path: p, external: true };
-        });
-      },
-    },
-  ],
   logLevel: "info",
 });
-
