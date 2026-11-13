@@ -926,7 +926,7 @@ adminRouter.get("/environment", requireRole(["ADMIN"]), async (req: AuthRequest,
   try {
     // Fetch any runtime overrides stored in DB
     const runtimeRows = await db.select().from(runtimeEnvironmentConfigs);
-    const runtimeMap = new Map(runtimeRows.map(r => [r.configKey, r]));
+    const runtimeMap = new Map<string, any>(runtimeRows.map((r: any) => [r.configKey, r]));
 
     const maskValue = (val: string | undefined, showLength = 4) => {
       if (!val) return null;
@@ -2361,7 +2361,7 @@ adminRouter.patch("/database/update-row", requireRole(["ADMIN"]), async (req: Au
       `SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1`,
       [table]
     );
-    const colMap = new Map(colsRes.rows.map(r => [r.column_name, r]));
+    const colMap = new Map<string, any>(colsRes.rows.map((r: any) => [r.column_name, r]));
 
     const setClauses: string[] = [];
     const values: any[] = [];

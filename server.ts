@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -30,9 +31,11 @@ import { officeAgentService } from "./src/services/OfficeAgentService.ts";
 async function initDbTables() {
   try {
     try {
-      await pglite.waitReady;
-      await migrate(db, { migrationsFolder: "./drizzle" });
-      console.log("Database schema migrations verified and applied successfully.");
+      if (pglite) {
+        await pglite.waitReady;
+        await migrate(db, { migrationsFolder: "./drizzle" });
+        console.log("Database schema migrations verified and applied successfully.");
+      }
     } catch (migErr) {
       console.warn("Schema migration note:", migErr);
     }
@@ -634,7 +637,7 @@ async function initDbTables() {
     // Attempt role assumption if running in cloudsql
     try {
       await pool.query("SET ROLE ai_studio_admin");
-    } catch {}
+    } catch { }
 
     for (const q of migrationQueries) {
       try {
@@ -646,8 +649,8 @@ async function initDbTables() {
 
     try {
       await pool.query("RESET ROLE");
-    } catch {}
-  } catch (e) {}
+    } catch { }
+  } catch (e) { }
 
   try {
     // Ensure default initial master admin for platform access
@@ -828,75 +831,67 @@ async function initDbTables() {
   }
 }
 
-async function startServer() {
-  await initDbTables();
-  const app = express();
-  const PORT = 3000;
+export const app = express();
+const PORT = Number(process.env.PORT) || 3000;
 
-  // Webhooks need raw body for signature verification
-  app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
-  
-  app.use(express.json());
+let dbInitialized = false;
+app.use(async (req, res, next) => {
+  if (!dbInitialized) {
+    dbInitialized = true;
+    initDbTables().catch((err) => console.warn("Lazy initDbTables note:", err));
+  }
+  next();
+});
 
-  // Track real-time HTTP traffic and throughput for System Process Monitor
-  app.use((req, res, next) => {
-    SystemMetricsService.recordHttpRequest();
-    next();
-  });
+// Webhooks need raw body for signature verification
+app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
 
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
-  });
+app.use(express.json());
 
-  // Google AdSense public configuration
-  app.get("/api/adsense/config", async (req, res) => {
+// Track real-time HTTP traffic and throughput for System Process Monitor
+app.use((req, res, next) => {
+  SystemMetricsService.recordHttpRequest();
+  next();
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// Google AdSense public configuration
+app.get("/api/adsense/config", async (req, res) => {
+  try {
+    let overrideClientId = process.env.VITE_GOOGLE_ADSENSE_CLIENT_ID;
     try {
-      let overrideClientId = process.env.VITE_GOOGLE_ADSENSE_CLIENT_ID;
-      try {
-        const envRes = await pool.query(
-          "SELECT config_value FROM runtime_environment_configs WHERE config_key = 'VITE_GOOGLE_ADSENSE_CLIENT_ID' LIMIT 1"
-        );
-        if (envRes.rows.length > 0 && envRes.rows[0].config_value) {
-          overrideClientId = envRes.rows[0].config_value;
-        }
-      } catch (err) {
-        // ignore if table not ready
+      const envRes = await pool.query(
+        "SELECT config_value FROM runtime_environment_configs WHERE config_key = 'VITE_GOOGLE_ADSENSE_CLIENT_ID' LIMIT 1"
+      );
+      if (envRes.rows.length > 0 && envRes.rows[0].config_value) {
+        overrideClientId = envRes.rows[0].config_value;
       }
+    } catch (err) {
+      // ignore if table not ready
+    }
 
-      const result = await pool.query("SELECT * FROM adsense_configs ORDER BY id DESC LIMIT 1");
-      if (result.rows.length > 0) {
-        const row = result.rows[0];
-        res.json({
-          publisherClientId: overrideClientId || row.publisher_client_id || "ca-pub-1234567890123456",
-          headerSlotId: row.header_slot_id,
-          searchSlotId: row.search_slot_id,
-          sidebarSlotId: row.sidebar_slot_id,
-          footerSlotId: row.footer_slot_id,
-          enableAutoAds: row.enable_auto_ads,
-          enableTestMode: row.enable_test_mode,
-          isEnabled: row.is_enabled,
-          showOnLanding: row.show_on_landing,
-          showOnSearch: row.show_on_search,
-          showOnSitterProfile: row.show_on_sitter_profile,
-        });
-      } else {
-        res.json({
-          publisherClientId: overrideClientId || "ca-pub-1234567890123456",
-          headerSlotId: "1234567890",
-          searchSlotId: "2345678901",
-          sidebarSlotId: "3456789012",
-          footerSlotId: "4567890123",
-          enableAutoAds: true,
-          enableTestMode: true,
-          isEnabled: true,
-          showOnLanding: true,
-          showOnSearch: true,
-          showOnSitterProfile: true,
-        });
-      }
-    } catch (e) {
+    const result = await pool.query("SELECT * FROM adsense_configs ORDER BY id DESC LIMIT 1");
+    if (result.rows.length > 0) {
+      const row = result.rows[0];
       res.json({
-        publisherClientId: process.env.VITE_GOOGLE_ADSENSE_CLIENT_ID || "ca-pub-1234567890123456",
+        publisherClientId: overrideClientId || row.publisher_client_id || "ca-pub-1234567890123456",
+        headerSlotId: row.header_slot_id,
+        searchSlotId: row.search_slot_id,
+        sidebarSlotId: row.sidebar_slot_id,
+        footerSlotId: row.footer_slot_id,
+        enableAutoAds: row.enable_auto_ads,
+        enableTestMode: row.enable_test_mode,
+        isEnabled: row.is_enabled,
+        showOnLanding: row.show_on_landing,
+        showOnSearch: row.show_on_search,
+        showOnSitterProfile: row.show_on_sitter_profile,
+      });
+    } else {
+      res.json({
+        publisherClientId: overrideClientId || "ca-pub-1234567890123456",
         headerSlotId: "1234567890",
         searchSlotId: "2345678901",
         sidebarSlotId: "3456789012",
@@ -909,27 +904,42 @@ async function startServer() {
         showOnSitterProfile: true,
       });
     }
-  });
+  } catch (e) {
+    res.json({
+      publisherClientId: process.env.VITE_GOOGLE_ADSENSE_CLIENT_ID || "ca-pub-1234567890123456",
+      headerSlotId: "1234567890",
+      searchSlotId: "2345678901",
+      sidebarSlotId: "3456789012",
+      footerSlotId: "4567890123",
+      enableAutoAds: true,
+      enableTestMode: true,
+      isEnabled: true,
+      showOnLanding: true,
+      showOnSearch: true,
+      showOnSitterProfile: true,
+    });
+  }
+});
 
-  // Google AdSense ads.txt verification endpoint
-  app.get("/ads.txt", async (req, res) => {
-    try {
-      const result = await pool.query("SELECT publisher_client_id FROM adsense_configs ORDER BY id DESC LIMIT 1");
-      const pubId = (result.rows[0]?.publisher_client_id || process.env.VITE_GOOGLE_ADSENSE_CLIENT_ID || "ca-pub-1234567890123456")
-        .replace(/^ca-/, "");
-      res.type("text/plain");
-      res.send(`google.com, ${pubId}, DIRECT, f08c47fec0942fa0\n`);
-    } catch {
-      res.type("text/plain");
-      res.send("google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0\n");
-    }
-  });
-
-  // robots.txt with AI Crawlers explicitly welcomed & Krawl Web Deception Honeypot path traps
-  app.get("/robots.txt", (req, res) => {
+// Google AdSense ads.txt verification endpoint
+app.get("/ads.txt", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT publisher_client_id FROM adsense_configs ORDER BY id DESC LIMIT 1");
+    const pubId = (result.rows[0]?.publisher_client_id || process.env.VITE_GOOGLE_ADSENSE_CLIENT_ID || "ca-pub-1234567890123456")
+      .replace(/^ca-/, "");
     res.type("text/plain");
-    res.send(
-      `User-agent: *
+    res.send(`google.com, ${pubId}, DIRECT, f08c47fec0942fa0\n`);
+  } catch {
+    res.type("text/plain");
+    res.send("google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0\n");
+  }
+});
+
+// robots.txt with AI Crawlers explicitly welcomed & Krawl Web Deception Honeypot path traps
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain");
+  res.send(
+    `User-agent: *
 Allow: /
 Disallow: /krawl-trap/
 Disallow: /.env
@@ -970,17 +980,17 @@ Sitemap: https://pawshield.local/sitemap.xml
 # LLMs.txt protocol for AI Agents
 # https://pawshield.local/llms.txt
 `
+  );
+});
+
+// llms.txt standard protocol endpoint for AI Search Platforms (ChatGPT, Perplexity, Claude, Copilot)
+app.get(["/llms.txt", "/.well-known/llms.txt"], async (req, res) => {
+  try {
+    const articlesRes = await pool.query(
+      "SELECT slug, title, meta_description, ai_direct_answer FROM seo_content_articles WHERE status = 'PUBLISHED' ORDER BY published_at DESC LIMIT 25"
     );
-  });
 
-  // llms.txt standard protocol endpoint for AI Search Platforms (ChatGPT, Perplexity, Claude, Copilot)
-  app.get(["/llms.txt", "/.well-known/llms.txt"], async (req, res) => {
-    try {
-      const articlesRes = await pool.query(
-        "SELECT slug, title, meta_description, ai_direct_answer FROM seo_content_articles WHERE status = 'PUBLISHED' ORDER BY published_at DESC LIMIT 25"
-      );
-
-      let markdown = `# PawShield Verified Pet Care Marketplace
+    let markdown = `# PawShield Verified Pet Care Marketplace
 > Safe, background-checked, insured pet sitting, dog walking, and boarding with financial escrow protection.
 
 ## Core Platform Architecture & Value Proposition
@@ -1002,125 +1012,128 @@ Sitemap: https://pawshield.local/sitemap.xml
 ## Published Knowledge Guides & AI Citation Index
 `;
 
-      for (const row of articlesRes.rows) {
-        markdown += `### [${row.title}](https://pawshield.local/guides/${row.slug})\n`;
-        markdown += `> ${row.ai_direct_answer}\n\n`;
-        markdown += `${row.meta_description}\n\n`;
-      }
-
-      res.type("text/plain; charset=utf-8");
-      res.send(markdown);
-    } catch (e: any) {
-      res.type("text/plain");
-      res.send("# PawShield\nSafe, verified pet sitting with escrow guarantee.\n");
+    for (const row of articlesRes.rows) {
+      markdown += `### [${row.title}](https://pawshield.local/guides/${row.slug})\n`;
+      markdown += `> ${row.ai_direct_answer}\n\n`;
+      markdown += `${row.meta_description}\n\n`;
     }
-  });
 
-  // llms-full.txt - In-depth content index for LLM deep context ingestion
-  app.get("/llms-full.txt", async (req, res) => {
-    try {
-      const articlesRes = await pool.query(
-        "SELECT slug, title, meta_description, ai_direct_answer, content_markdown FROM seo_content_articles WHERE status = 'PUBLISHED' ORDER BY published_at DESC LIMIT 15"
-      );
+    res.type("text/plain; charset=utf-8");
+    res.send(markdown);
+  } catch (e: any) {
+    res.type("text/plain");
+    res.send("# PawShield\nSafe, verified pet sitting with escrow guarantee.\n");
+  }
+});
 
-      let markdown = `# PawShield Comprehensive Knowledge Hub & AI Context File\n\n`;
-      for (const row of articlesRes.rows) {
-        markdown += `## ${row.title}\nURL: https://pawshield.local/guides/${row.slug}\nSummary: ${row.ai_direct_answer}\n\n${row.content_markdown}\n\n---\n\n`;
-      }
+// llms-full.txt - In-depth content index for LLM deep context ingestion
+app.get("/llms-full.txt", async (req, res) => {
+  try {
+    const articlesRes = await pool.query(
+      "SELECT slug, title, meta_description, ai_direct_answer, content_markdown FROM seo_content_articles WHERE status = 'PUBLISHED' ORDER BY published_at DESC LIMIT 15"
+    );
 
-      res.type("text/plain; charset=utf-8");
-      res.send(markdown);
-    } catch {
-      res.type("text/plain");
-      res.send("# PawShield Knowledge Hub\n");
+    let markdown = `# PawShield Comprehensive Knowledge Hub & AI Context File\n\n`;
+    for (const row of articlesRes.rows) {
+      markdown += `## ${row.title}\nURL: https://pawshield.local/guides/${row.slug}\nSummary: ${row.ai_direct_answer}\n\n${row.content_markdown}\n\n---\n\n`;
     }
-  });
 
-  // Dynamic XML Sitemap for Google, Bing, and Search Engine Indexing
-  app.get("/sitemap.xml", async (req, res) => {
-    try {
-      const articlesRes = await pool.query(
-        "SELECT slug, updated_at FROM seo_content_articles WHERE status = 'PUBLISHED' ORDER BY updated_at DESC"
-      );
+    res.type("text/plain; charset=utf-8");
+    res.send(markdown);
+  } catch {
+    res.type("text/plain");
+    res.send("# PawShield Knowledge Hub\n");
+  }
+});
 
-      const staticRoutes = [
-        { url: "https://pawshield.local/", changefreq: "daily", priority: "1.0" },
-        { url: "https://pawshield.local/search", changefreq: "daily", priority: "0.9" },
-        { url: "https://pawshield.local/guides", changefreq: "daily", priority: "0.9" },
-        { url: "https://pawshield.local/become-a-sitter", changefreq: "weekly", priority: "0.8" },
-        { url: "https://pawshield.local/about", changefreq: "monthly", priority: "0.7" },
-        { url: "https://pawshield.local/contact", changefreq: "monthly", priority: "0.6" },
-        { url: "https://pawshield.local/terms", changefreq: "monthly", priority: "0.5" },
-        { url: "https://pawshield.local/privacy", changefreq: "monthly", priority: "0.5" },
-      ];
+// Dynamic XML Sitemap for Google, Bing, and Search Engine Indexing
+app.get("/sitemap.xml", async (req, res) => {
+  try {
+    const articlesRes = await pool.query(
+      "SELECT slug, updated_at FROM seo_content_articles WHERE status = 'PUBLISHED' ORDER BY updated_at DESC"
+    );
 
-      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-      xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+    const staticRoutes = [
+      { url: "https://pawshield.local/", changefreq: "daily", priority: "1.0" },
+      { url: "https://pawshield.local/search", changefreq: "daily", priority: "0.9" },
+      { url: "https://pawshield.local/guides", changefreq: "daily", priority: "0.9" },
+      { url: "https://pawshield.local/become-a-sitter", changefreq: "weekly", priority: "0.8" },
+      { url: "https://pawshield.local/about", changefreq: "monthly", priority: "0.7" },
+      { url: "https://pawshield.local/contact", changefreq: "monthly", priority: "0.6" },
+      { url: "https://pawshield.local/terms", changefreq: "monthly", priority: "0.5" },
+      { url: "https://pawshield.local/privacy", changefreq: "monthly", priority: "0.5" },
+    ];
 
-      for (const r of staticRoutes) {
-        xml += `  <url>\n    <loc>${r.url}</loc>\n    <changefreq>${r.changefreq}</changefreq>\n    <priority>${r.priority}</priority>\n  </url>\n`;
-      }
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
 
-      for (const art of articlesRes.rows) {
-        const lastMod = new Date(art.updated_at || Date.now()).toISOString().split("T")[0];
-        xml += `  <url>\n    <loc>https://pawshield.local/guides/${art.slug}</loc>\n    <lastmod>${lastMod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.85</priority>\n  </url>\n`;
-      }
-
-      xml += `</urlset>`;
-
-      res.type("application/xml");
-      res.send(xml);
-    } catch (e: any) {
-      res.status(500).send("Error generating sitemap");
+    for (const r of staticRoutes) {
+      xml += `  <url>\n    <loc>${r.url}</loc>\n    <changefreq>${r.changefreq}</changefreq>\n    <priority>${r.priority}</priority>\n  </url>\n`;
     }
-  });
 
-  // Krawl Web Deception Honeypot Traps (BlessedRebuS/Krawl Integration)
-  app.get("/.env", handleDecoyEnv);
-  app.get("/wp-config.php", handleDecoyEnv);
-  app.get("/admin/backup.sql", handleDecoyBackup);
-  app.get("/backup.sql", handleDecoyBackup);
-  app.use("/krawl-trap", (req, res) => res.redirect(301, "/api/krawl/trap/1/entry"));
-  app.use("/wp-admin", (req, res) => res.redirect(301, "/api/krawl/trap/1/wp_admin"));
-  app.use("/phpmyadmin", (req, res) => res.redirect(301, "/api/krawl/trap/1/phpmyadmin"));
+    for (const art of articlesRes.rows) {
+      const lastMod = new Date(art.updated_at || Date.now()).toISOString().split("T")[0];
+      xml += `  <url>\n    <loc>https://pawshield.local/guides/${art.slug}</loc>\n    <lastmod>${lastMod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.85</priority>\n  </url>\n`;
+    }
 
-  app.use("/api/auth", authRouter);
-  app.use("/api/bookings", requireAuth, bookingsRouter);
-  app.use("/api/stripe", stripeWebhookRouter);
-  
-  // New routes
-  app.use("/api/sitters", sittersRouter);
-  app.use("/api/pets", requireAuth, petsRouter);
-  app.use("/api/search", searchRouter);
-  app.use("/api/pricing", pricingRouter);
-  app.use("/api/payments", requireAuth, paymentsRouter);
-  
-  // Real-Time 2.5D Virtual Office Floor Map Stream & State
-  app.get("/api/v1/office/stream", (req, res) => {
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.flushHeaders?.();
-    officeAgentService.subscribeClient(res);
-  });
-  app.get("/api/v1/office/status", (req, res) => {
-    res.json(officeAgentService.getState());
-  });
+    xml += `</urlset>`;
 
-  app.use("/api/v1/admin", requireAuth, adminRouter);
-  app.use("/api/notifications", notificationsRouter);
-  app.use("/api/homepage-config", homepageRouter);
-  app.use("/api/buy-me-coffee", buyMeCoffeeRouter);
-  app.use("/api/sitter-verifications", sitterVerificationsRouter);
-  app.use("/api/v1/sitter-verifications", sitterVerificationsRouter);
-  app.use("/api/memberships", membershipsRouter);
-  app.use("/api/referrals", referralsRouter);
-  app.use("/api/ai-agent", aiAgentRouter);
-  app.use("/api/krawl", krawlRouter);
-  app.use("/api/seo-content", aiSeoContentRouter);
-  app.use("/api/ai-agent/seo-content", aiSeoContentRouter);
-  app.use("/api/ai-agent/homepage", aiHomepageAgentRouter);
-  app.use("/api/reviews", reviewsRouter);
+    res.type("application/xml");
+    res.send(xml);
+  } catch (e: any) {
+    res.status(500).send("Error generating sitemap");
+  }
+});
+
+// Krawl Web Deception Honeypot Traps (BlessedRebuS/Krawl Integration)
+app.get("/.env", handleDecoyEnv);
+app.get("/wp-config.php", handleDecoyEnv);
+app.get("/admin/backup.sql", handleDecoyBackup);
+app.get("/backup.sql", handleDecoyBackup);
+app.use("/krawl-trap", (req, res) => res.redirect(301, "/api/krawl/trap/1/entry"));
+app.use("/wp-admin", (req, res) => res.redirect(301, "/api/krawl/trap/1/wp_admin"));
+app.use("/phpmyadmin", (req, res) => res.redirect(301, "/api/krawl/trap/1/phpmyadmin"));
+
+app.use("/api/auth", authRouter);
+app.use("/api/bookings", requireAuth, bookingsRouter);
+app.use("/api/stripe", stripeWebhookRouter);
+
+// New routes
+app.use("/api/sitters", sittersRouter);
+app.use("/api/pets", requireAuth, petsRouter);
+app.use("/api/search", searchRouter);
+app.use("/api/pricing", pricingRouter);
+app.use("/api/payments", requireAuth, paymentsRouter);
+
+// Real-Time 2.5D Virtual Office Floor Map Stream & State
+app.get("/api/v1/office/stream", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+  officeAgentService.subscribeClient(res);
+});
+app.get("/api/v1/office/status", (req, res) => {
+  res.json(officeAgentService.getState());
+});
+
+app.use("/api/v1/admin", requireAuth, adminRouter);
+app.use("/api/notifications", notificationsRouter);
+app.use("/api/homepage-config", homepageRouter);
+app.use("/api/buy-me-coffee", buyMeCoffeeRouter);
+app.use("/api/sitter-verifications", sitterVerificationsRouter);
+app.use("/api/v1/sitter-verifications", sitterVerificationsRouter);
+app.use("/api/memberships", membershipsRouter);
+app.use("/api/referrals", referralsRouter);
+app.use("/api/ai-agent", aiAgentRouter);
+app.use("/api/krawl", krawlRouter);
+app.use("/api/seo-content", aiSeoContentRouter);
+app.use("/api/ai-agent/seo-content", aiSeoContentRouter);
+app.use("/api/ai-agent/homepage", aiHomepageAgentRouter);
+app.use("/api/reviews", reviewsRouter);
+
+export async function startServer() {
+  await initDbTables();
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -1141,4 +1154,8 @@ Sitemap: https://pawshield.local/sitemap.xml
   });
 }
 
-startServer();
+if (process.env.VERCEL !== "1") {
+  startServer();
+}
+
+export default app;
