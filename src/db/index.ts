@@ -6,7 +6,16 @@ import path from "path";
 import fs from "fs";
 import { createRequire } from "module";
 
-const requireModule = createRequire(import.meta.url);
+const getRequireModule = () => {
+  if (typeof require !== "undefined") {
+    return require;
+  }
+  try {
+    return createRequire(import.meta?.url || "file://" + process.cwd() + "/index.js");
+  } catch {
+    return null;
+  }
+};
 
 declare global {
   var _postgresPool: Pool | undefined;
@@ -257,11 +266,14 @@ if (isRemoteDb) {
   pgliteInstance = undefined;
 } else {
   // Only loaded in local development without remote DATABASE_URL
-  const { PGlite } = requireModule("@electric-sql/pglite");
-  const { drizzle } = requireModule("drizzle-orm/pglite");
-  pgliteInstance = getPgLiteInstance(PGlite);
-  poolInstance = createPgLitePoolAdapter(pgliteInstance);
-  dbInstance = drizzle(pgliteInstance, { schema });
+  const req = getRequireModule();
+  if (req) {
+    const { PGlite } = req("@electric-sql/pglite");
+    const { drizzle } = req("drizzle-orm/pglite");
+    pgliteInstance = getPgLiteInstance(PGlite);
+    poolInstance = createPgLitePoolAdapter(pgliteInstance);
+    dbInstance = drizzle(pgliteInstance, { schema });
+  }
 }
 
 export const pool: any = poolInstance;

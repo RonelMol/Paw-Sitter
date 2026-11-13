@@ -30,7 +30,8 @@ async function initDbTables() {
   try {
     try {
       if (pglite) {
-        const { migrate } = await import("drizzle-orm/pglite/migrator");
+        const migratorPkg = "drizzle-orm/pglite/migrator";
+        const { migrate } = await import(migratorPkg);
         await pglite.waitReady;
         await migrate(db, { migrationsFolder: "./drizzle" });
         console.log("Database schema migrations verified and applied successfully.");
@@ -1135,7 +1136,8 @@ export async function startServer() {
   await initDbTables();
 
   if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = await import("vite");
+    const vitePackage = "vite";
+    const { createServer: createViteServer } = await import(vitePackage);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
